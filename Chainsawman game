@@ -1,0 +1,166 @@
+import pygame
+import random
+import sys
+
+pygame.init()
+pygame.mixer.init()
+
+# Background Music
+pygame.mixer.music.load("Moon/rap.mp3")   # path to your music file
+pygame.mixer.music.set_volume(0.5)             # volume (0.0 to 1.0)
+pygame.mixer.music.play(-1)                    # -1 = loop forever
+
+# Screen
+WIDTH = 800
+HEIGHT = 400
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Demon Hunter")
+
+clock = pygame.time.Clock()
+font = pygame.font.SysFont("arial", 30)
+
+# Load Images
+player_img = pygame.image.load("Moon/chainsaw.png")
+player_img = pygame.transform.scale(player_img, (60, 60))
+
+demon_img = pygame.image.load("Moon/demon.png")
+demon_img = pygame.transform.scale(demon_img, (50, 50))
+
+# Background Image
+bg_img = pygame.image.load("Moon/hell.jpg")
+bg_img = pygame.transform.scale(bg_img, (WIDTH, HEIGHT))
+
+# Background Music
+pygame.mixer.music.load("Moon/rap.mp3")
+pygame.mixer.music.set_volume(0.5)
+pygame.mixer.music.play(-1)
+
+# Player
+player = pygame.Rect(100, 300, 60, 60)
+ground = 360
+
+velocity = 0
+gravity = 1
+jump_power = -18
+
+demons = []
+score = 0
+lives = 3
+
+attack = False
+attack_timer = 0
+
+game_over = False
+
+# Background scroll
+bg_x = 0
+
+while True:
+    clock.tick(60)
+
+    speed = 6 + score // 5
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+        if event.type == pygame.KEYDOWN:
+
+            if not game_over:
+                if event.key == pygame.K_SPACE and player.bottom >= ground:
+                    velocity = jump_power
+
+                if event.key == pygame.K_f:
+                    attack = True
+                    attack_timer = 10
+
+            else:
+                if event.key == pygame.K_r:
+                    demons.clear()
+                    score = 0
+                    lives = 3
+                    game_over = False
+                    player.y = 300
+                    pygame.mixer.music.play(-1)
+
+    if not game_over:
+
+        velocity += gravity
+        player.y += velocity
+
+        if player.bottom >= ground:
+            player.bottom = ground
+            velocity = 0
+
+        # Spawn demons
+        if random.randint(1, 60) == 1:
+            demons.append(pygame.Rect(WIDTH, 320, 50, 50))
+
+        for demon in demons[:]:
+
+            demon.x -= speed
+
+            # Attack hit
+            if attack and demon.colliderect(player.inflate(40, 0)):
+                demons.remove(demon)
+                score += 2
+                continue
+
+            # Player hit
+            if demon.colliderect(player):
+                demons.remove(demon)
+                lives -= 1
+
+                if lives <= 0:
+                    game_over = True
+                    pygame.mixer.music.stop()
+
+            if demon.right < 0:
+                demons.remove(demon)
+                score += 1
+
+        if attack:
+            attack_timer -= 1
+            if attack_timer <= 0:
+                attack = False
+
+    # Scrolling Background
+    bg_x -= 2
+    if bg_x <= -WIDTH:
+        bg_x = 0
+
+    screen.blit(bg_img, (bg_x, 0))
+    screen.blit(bg_img, (bg_x + WIDTH, 0))
+
+    # Ground line
+    pygame.draw.line(screen, (0, 0, 0), (0, ground), (WIDTH, ground), 3)
+
+    # Draw player
+    screen.blit(player_img, (player.x, player.y))
+
+    # Attack effect
+    if attack:
+        pygame.draw.rect(screen, (255, 255, 0), (player.right, player.y + 20, 30, 10))
+
+    # Draw demons
+    for demon in demons:
+        screen.blit(demon_img, (demon.x, demon.y))
+
+    # Score
+    score_text = font.render("Score: " + str(score), True, (0, 0, 0))
+    screen.blit(score_text, (10, 10))
+
+    # Lives
+    life_text = font.render("Lives: " + str(lives), True, (0, 0, 0))
+    screen.blit(life_text, (650, 10))
+
+    # Game Over
+    if game_over:
+        over = font.render("GAME OVER", True, (255, 0, 0))
+        restart = font.render("Press R to Restart", True, (0, 0, 0))
+
+        screen.blit(over, (320, 150))
+        screen.blit(restart, (280, 200))
+
+    pygame.display.update()
